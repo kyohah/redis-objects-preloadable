@@ -1,43 +1,128 @@
-# Redis::Objects::Preloadable
+# redis-objects-preloadable
 
-TODO: Delete this and the text below, and describe your gem
+[English](README.md) | [日本語](docs/ja/index.md)
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/redis/objects/preloadable`. To experiment with that code, run `bin/console` for an interactive prompt.
+Eliminate N+1 Redis calls for [redis-objects](https://github.com/nateware/redis-objects) in ActiveRecord models.
+
+Provides `redis_preload` scope that batch-loads Redis::Objects attributes using `MGET` (for counter/value) and `pipelined` commands (for list/set/sorted_set/hash_key), following the same design as ActiveRecord's `preload`.
 
 ## Installation
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
-
-Install the gem and add to the application's Gemfile by executing:
-
-```bash
-bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+```ruby
+gem "redis-objects-preloadable"
 ```
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+## Setup
 
-```bash
-gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+Include `Redis::Objects::Preloadable` in your model after `Redis::Objects`:
+
+```ruby
+class Pack < ApplicationRecord
+  include Redis::Objects
+  include Redis::Objects::Preloadable
+
+  counter :cache_total_count, expiration: 15.minutes
+  list    :recent_item_ids
+  set     :tag_ids
+end
 ```
 
 ## Usage
 
-TODO: Write usage instructions here
+Chain `redis_preload` onto any ActiveRecord relation:
+
+```ruby
+records = Pack.order(:id)
+              .redis_preload(:cache_total_count, :recent_item_ids, :tag_ids)
+              .limit(100)
+
+records.each do |pack|
+  pack.cache_total_count.value   # preloaded, no Redis call
+  pack.recent_item_ids.values    # preloaded
+  pack.tag_ids.members           # preloaded
+end
+```
+
+Without `redis_preload`, accessing Redis attributes falls back to individual Redis calls (original behavior).
+
+### Preloading on Association-Loaded Records
+
+`redis_preload` works on top-level relations. For records loaded via `includes` / `preload` / `eager_load`, use `Redis::Objects::Preloadable.preload`:
+
+```ruby
+class User < ApplicationRecord
+  has_many :articles
+end
+
+class Article < ApplicationRecord
+  include Redis::Objects
+  include Redis::Objects::Preloadable
+
+  counter :view_count
+  value   :cached_summary
+end
+
+users = User.includes(:articles).load
+
+# Batch-preload Redis attributes on the associated records
+articles = users.flat_map(&:articles)
+Redis::Objects::Preloadable.preload(articles, :view_count, :cached_summary)
+
+users.each do |user|
+  user.articles.each do |article|
+    article.view_count.value     # preloaded, no Redis call
+    article.cached_summary.value # preloaded
+  end
+end
+```
+
+`Redis::Objects::Preloadable.preload` accepts any array of records, so it works in any context — not just associations.
+
+### Lazy Resolution
+
+Preloading is lazy. The `redis_preload` scope attaches metadata to the relation, but no Redis calls are made until you first access a preloaded attribute. At that point, all declared attributes for all loaded records are fetched in a single batch.
+
+## Supported Types
+
+| redis-objects type | Redis command     | Preloaded methods                          |
+|--------------------|-------------------|--------------------------------------------|
+| `counter`          | MGET              | `value`, `nil?`                            |
+| `value`            | MGET              | `value`, `nil?`                            |
+| `list`             | LRANGE 0 -1       | `value`, `values`, `[]`, `length`, `empty?`|
+| `set`              | SMEMBERS          | `members`, `include?`, `length`, `empty?`  |
+| `sorted_set`       | ZRANGE WITHSCORES | `members`, `score`, `rank`, `length`       |
+| `hash_key`         | HGETALL           | `all`, `[]`, `keys`, `values`              |
+
+## How It Works
+
+1. `redis_preload(:attr1, :attr2)` extends the AR relation with `RelationExtension`
+2. When the relation is loaded, a `PreloadContext` is attached to each redis-objects instance
+3. On first attribute access, `PreloadContext#resolve!` fires:
+   - **counter/value** types: batched via `MGET`
+   - **list/set/sorted_set/hash_key** types: batched via `pipelined`
+4. Each redis-objects instance receives its preloaded value via `preload!`
+5. Subsequent reads return the preloaded value without hitting Redis
+
+The type patches are applied via `prepend` on `Redis::Counter`, `Redis::Value`, `Redis::List`, `Redis::Set`, `Redis::SortedSet`, and `Redis::HashKey`.
+
+## Backward Compatibility: `read_redis_counter`
+
+If your models use the `read_redis_counter` helper (from the original Concern-based approach), it continues to work. With transparent preloading, you can remove explicit `read_redis_counter` calls and access `counter.value` directly.
+
+## Requirements
+
+- Ruby >= 3.1
+- ActiveRecord >= 7.0
+- redis-objects >= 1.7
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
-
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
-
-## Contributing
-
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/redis-objects-preloadable. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/[USERNAME]/redis-objects-preloadable/blob/main/CODE_OF_CONDUCT.md).
+```bash
+bin/setup           # install dependencies
+bundle exec rspec   # run tests (requires local Redis)
+bundle exec rubocop # lint
+```
 
 ## License
 
 The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
-
-## Code of Conduct
-
-Everyone interacting in the Redis::Objects::Preloadable project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/[USERNAME]/redis-objects-preloadable/blob/main/CODE_OF_CONDUCT.md).

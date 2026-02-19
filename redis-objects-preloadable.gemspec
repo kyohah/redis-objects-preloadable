@@ -3,38 +3,30 @@
 require_relative "lib/redis/objects/preloadable/version"
 
 Gem::Specification.new do |spec|
-  spec.name = "redis-objects-preloadable"
+  spec.name    = "redis-objects-preloadable"
   spec.version = Redis::Objects::Preloadable::VERSION
   spec.authors = ["kyohah"]
-  spec.email = ["3257272+kyohah@users.noreply.github.com"]
+  spec.email   = ["3257272+kyohah@users.noreply.github.com"]
 
-  spec.summary = "TODO: Write a short summary, because RubyGems requires one."
-  spec.description = "TODO: Write a longer description or delete this line."
-  spec.homepage = "TODO: Put your gem's website or public repo URL here."
-  spec.license = "MIT"
-  spec.required_ruby_version = ">= 3.2.0"
+  spec.summary     = "Eliminate N+1 Redis calls for redis-objects in ActiveRecord models"
+  spec.description = <<~DESC
+    Provides batch loading (MGET / pipeline) for Redis::Objects attributes on
+    ActiveRecord models, following the same design as ActiveRecord's `preload`.
+    Supports counter, value, list, set, sorted_set, and hash_key types.
+  DESC
+  spec.homepage = "https://github.com/kyohah/redis-objects-preloadable"
+  spec.license  = "MIT"
 
-  spec.metadata["allowed_push_host"] = "TODO: Set to your gem server 'https://example.com'"
+  spec.required_ruby_version = ">= 3.1"
+
   spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = "TODO: Put your gem's public repo URL here."
-  spec.metadata["changelog_uri"] = "TODO: Put your gem's CHANGELOG.md URL here."
+  spec.metadata["source_code_uri"] = spec.homepage
+  spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"
+  spec.metadata["rubygems_mfa_required"] = "true"
 
-  # Specify which files should be added to the gem when it is released.
-  # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
-  gemspec = File.basename(__FILE__)
-  spec.files = IO.popen(%w[git ls-files -z], chdir: __dir__, err: IO::NULL) do |ls|
-    ls.readlines("\x0", chomp: true).reject do |f|
-      (f == gemspec) ||
-        f.start_with?(*%w[bin/ Gemfile .gitignore .rubocop.yml])
-    end
-  end
-  spec.bindir = "exe"
-  spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
+  spec.files = Dir["lib/**/*", "README.md", "CHANGELOG.md", "LICENSE.txt"]
   spec.require_paths = ["lib"]
 
-  # Uncomment to register a new dependency of your gem
-  # spec.add_dependency "example-gem", "~> 1.0"
-
-  # For more information and examples about making a new gem, check out our
-  # guide at: https://bundler.io/guides/creating_gem.html
+  spec.add_dependency "activerecord", ">= 7.0"
+  spec.add_dependency "redis-objects", ">= 1.7"
 end
