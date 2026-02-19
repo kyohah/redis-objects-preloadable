@@ -1,0 +1,14 @@
+[book]
+title = "redis-objects-preloadable"
+authors = ["kyohah"]
+language = "en"
+src = "src"
+
+[build]
+build-dir = "book"
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/kyohah/redis-objects-preloadable"
+edit-url-template = "https://github.com/kyohah/redis-objects-preloadable/edit/main/docs/{path}"

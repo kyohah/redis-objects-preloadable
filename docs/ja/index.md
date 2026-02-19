@@ -1,6 +1,6 @@
 # redis-objects-preloadable
 
-[English](../../README.md) | [日本語](index.md)
+[English](../../README.md) | [日本語](index.md) | [中文](../zh/index.md) | [Français](../fr/index.md) | [Deutsch](../de/index.md)
 
 [redis-objects](https://github.com/nateware/redis-objects) を使った ActiveRecord モデルの N+1 Redis 呼び出しを解消します。
 

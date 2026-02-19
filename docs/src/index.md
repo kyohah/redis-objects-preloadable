@@ -1,7 +1,5 @@
 # redis-objects-preloadable
 
-[English](README.md) | [日本語](docs/ja/index.md) | [中文](docs/zh/index.md) | [Français](docs/fr/index.md) | [Deutsch](docs/de/index.md)
-
 Eliminate N+1 Redis calls for [redis-objects](https://github.com/nateware/redis-objects) in ActiveRecord models.
 
 Provides `redis_preload` scope that batch-loads Redis::Objects attributes using `MGET` (for counter/value) and `pipelined` commands (for list/set/sorted_set/hash_key), following the same design as ActiveRecord's `preload`.
@@ -64,7 +62,6 @@ end
 
 users = User.includes(:articles).load
 
-# Batch-preload Redis attributes on the associated records
 articles = users.flat_map(&:articles)
 Redis::Objects::Preloadable.preload(articles, :view_count, :cached_summary)
 
@@ -75,8 +72,6 @@ users.each do |user|
   end
 end
 ```
-
-`Redis::Objects::Preloadable.preload` accepts any array of records, so it works in any context — not just associations.
 
 ### Lazy Resolution
 
@@ -105,24 +100,12 @@ Preloading is lazy. The `redis_preload` scope attaches metadata to the relation,
 
 The type patches are applied via `prepend` on `Redis::Counter`, `Redis::Value`, `Redis::List`, `Redis::Set`, `Redis::SortedSet`, and `Redis::HashKey`.
 
-## Backward Compatibility: `read_redis_counter`
-
-If your models use the `read_redis_counter` helper (from the original Concern-based approach), it continues to work. With transparent preloading, you can remove explicit `read_redis_counter` calls and access `counter.value` directly.
-
 ## Requirements
 
 - Ruby >= 3.1
 - ActiveRecord >= 7.0
 - redis-objects >= 1.7
 
-## Development
-
-```bash
-bin/setup           # install dependencies
-bundle exec rspec   # run tests (requires local Redis)
-bundle exec rubocop # lint
-```
-
 ## License
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+MIT License
