@@ -4,7 +4,10 @@ class Redis
   module Objects
     module Preloadable
       module TypePatches
+        # Prepended onto Redis::List to support preloaded values.
+        # Fetched via LRANGE 0 -1 in a pipeline.
         module List
+          # @api private
           def preload!(raw_value)
             @preloaded_value = raw_value || []
           end

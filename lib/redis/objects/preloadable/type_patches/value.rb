@@ -4,7 +4,10 @@ class Redis
   module Objects
     module Preloadable
       module TypePatches
+        # Prepended onto Redis::Value to support preloaded values.
+        # Fetched via MGET. Returns raw string or nil.
         module Value
+          # @api private
           def preload!(raw_value)
             @preloaded_value = raw_value
           end

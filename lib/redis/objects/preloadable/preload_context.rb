@@ -3,15 +3,36 @@
 class Redis
   module Objects
     module Preloadable
+      # Redis::Objects types that support MGET (single-value keys).
       MGET_TYPES = %i[counter value].freeze
 
+      # Holds a batch of records and attribute names, and resolves them
+      # in a single Redis round-trip on first access.
+      #
+      # PreloadContext is created by {RelationExtension#load} or
+      # {Preloadable.preload} and attached to each redis-objects instance.
+      # Resolution is lazy and idempotent.
+      #
+      # @example
+      #   context = PreloadContext.new(records, [:view_count, :tag_ids])
+      #   context.resolve!  # fetches all values in one batch
+      #   context.resolve!  # no-op on subsequent calls
+      #
       class PreloadContext
+        # @param records [Array<ActiveRecord::Base>] records to preload
+        # @param names [Array<Symbol>] redis-objects attribute names
         def initialize(records, names)
           @records = records
           @names = names
           @resolved = false
         end
 
+        # Resolve all preloaded attributes in a single batch.
+        #
+        # Uses MGET for counter/value types and pipelined commands for
+        # list/set/sorted_set/hash_key types. This method is idempotent.
+        #
+        # @return [void]
         def resolve!
           return if @resolved
 
