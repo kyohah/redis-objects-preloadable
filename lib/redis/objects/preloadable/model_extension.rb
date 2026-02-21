@@ -14,8 +14,8 @@ class Redis
 
         class_methods do
           # @api private
-          def all
-            super.extending(Redis::Objects::Preloadable::RelationExtension)
+          def all(...)
+            super(...).extending(Redis::Objects::Preloadable::RelationExtension)
           end
         end
 
