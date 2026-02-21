@@ -35,6 +35,12 @@ class Redis
         end
 
         # @api private
+        def reset
+          @redis_preload_context_attached = false
+          super
+        end
+
+        # @api private
         def load
           result = super
 

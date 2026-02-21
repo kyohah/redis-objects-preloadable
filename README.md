@@ -105,6 +105,28 @@ Preloading is lazy. The `redis_preload` scope attaches metadata to the relation,
 
 The type patches are applied via `prepend` on `Redis::Counter`, `Redis::Value`, `Redis::List`, `Redis::Set`, `Redis::SortedSet`, and `Redis::HashKey`.
 
+## Limitations
+
+### `record.reload` does not clear preloaded values
+
+`reload` refreshes DB columns only. Preloaded Redis values remain cached on the redis-objects instances and are **not** updated.
+
+```ruby
+widget = Widget.redis_preload(:view_count).first
+widget.view_count.value  # => 5 (preloaded)
+
+# Another process increments the counter in Redis...
+
+widget.reload
+widget.view_count.value  # => 5 (still the preloaded value — NOT refreshed)
+```
+
+If you need a fresh Redis value after `reload`, fetch the record again without preloading:
+
+```ruby
+Widget.find(widget.id).view_count.value  # => hits Redis directly
+```
+
 ## Backward Compatibility: `read_redis_counter`
 
 If your models use the `read_redis_counter` helper (from the original Concern-based approach), it continues to work. With transparent preloading, you can remove explicit `read_redis_counter` calls and access `counter.value` directly.
